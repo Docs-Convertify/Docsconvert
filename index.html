@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocConvert — แปลงเอกสารฟรี</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --card2: #16213e;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #2d2d4e;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 10% 10%, rgba(99,102,241,.18) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 90%, rgba(139,92,246,.18) 0%, transparent 50%);
+        }
+
+        /* ── Header ── */
+        header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            backdrop-filter: blur(12px);
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(15,15,26,.85);
+        }
+        .logo {
+            display: flex; align-items: center; gap: .75rem;
+            font-size: 1.4rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .logo-box {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; -webkit-text-fill-color: white;
+        }
+        .badge-free {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff; padding: .25rem .75rem; border-radius: 20px;
+            font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+        }
+
+        /* ── Main ── */
+        main { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
+
+        .hero { text-align: center; margin-bottom: 2.75rem; }
+        .hero h1 {
+            font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900;
+            line-height: 1.2; margin-bottom: .9rem;
+        }
+        .hero h1 span {
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .hero p { color: var(--muted); font-size: 1.05rem; max-width: 580px; margin: 0 auto; }
+
+        /* ── Drop Zone ── */
+        .drop-zone {
+            border: 2px dashed var(--border); border-radius: 1.5rem;
+            padding: 3.5rem 2rem; text-align: center; cursor: pointer;
+            transition: all .3s; background: var(--card); position: relative; overflow: hidden;
+        }
+        .drop-zone::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.06));
+            opacity: 0; transition: opacity .3s;
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--primary);
+            box-shadow: 0 16px 50px rgba(99,102,241,.22);
+            transform: translateY(-2px);
+        }
+        .drop-zone:hover::after, .drop-zone.drag-over::after { opacity: 1; }
+        .drop-zone.drag-over { border-color: var(--secondary); background: rgba(139,92,246,.08); }
+
+        .drop-icon { font-size: 3.5rem; display: block; margin-bottom: 1.2rem; }
+        .drop-zone h2 { font-size: 1.35rem; margin-bottom: .6rem; }
+        .drop-zone > p { color: var(--muted); margin-bottom: 1.5rem; font-size: .93rem; }
+
+        .tag-row { display: flex; flex-wrap: wrap; gap: .45rem; justify-content: center; margin-top: 1.4rem; }
+        .tag {
+            padding: .22rem .65rem; border-radius: 20px; font-size: .72rem; font-weight: 600;
+            background: var(--card2); border: 1px solid var(--border); color: var(--muted);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: .5rem;
+            padding: .7rem 1.4rem; border-radius: .75rem; font-weight: 600;
+            font-size: .95rem; cursor: pointer; transition: all .2s; border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.4);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,.5); }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+        .btn-ghost {
+            background: var(--card2); color: var(--text);
+            border: 1px solid var(--border); font-size: .875rem; padding: .5rem 1rem;
+        }
+        .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-dl {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,.4);
+        }
+        .btn-dl:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,185,129,.5); }
+
+        /* ── Conversion Panel ── */
+        #conv-panel { display: none; margin-top: 2rem; }
+        .panel {
+            background: var(--card); border-radius: 1.5rem;
+            padding: 1.75rem; border: 1px solid var(--border);
+        }
+        .panel-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1.5rem; flex-wrap: wrap; gap: .75rem;
+        }
+        .file-info { display: flex; align-items: center; gap: .9rem; }
+        .file-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; font-weight: 700; flex-shrink: 0;
+        }
+        .file-name { font-size: .98rem; font-weight: 700; margin-bottom: .2rem; word-break: break-all; }
+        .file-meta { font-size: .8rem; color: var(--muted); }
+
+        .section-label {
+            font-size: .75rem; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: .08em; margin-bottom: .75rem;
+        }
+
+        /* ── Format Grid ── */
+        .fmt-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .65rem;
+        }
+        .fmt-opt {
+            padding: .9rem .5rem; border-radius: .75rem;
+            border: 2px solid var(--border); background: var(--card2);
+            cursor: pointer; text-align: center; transition: all .2s;
+        }
+        .fmt-opt:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .fmt-opt.sel { border-color: var(--primary); background: rgba(99,102,241,.12); }
+        .fmt-opt .fi { font-size: 1.6rem; display: block; margin-bottom: .4rem; }
+        .fmt-opt .fn { font-size: .82rem; font-weight: 700; }
+        .fmt-opt .fd { font-size: .68rem; color: var(--muted); margin-top: .15rem; }
+
+        .action-row { display: flex; align-items: center; gap: 1rem; margin-top: 1.4rem; flex-wrap: wrap; }
+        .sel-text { font-size: .85rem; color: var(--muted); }
+
+        /* ── Progress ── */
+        .progress-bar {
+            width: 100%; height: 6px; background: var(--border);
+            border-radius: 3px; overflow: hidden; margin: .8rem 0 .4rem;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width .35s ease; width: 0%;
+        }
+        .progress-text { font-size: .82rem; color: var(--muted); }
+
+        /* ── Alert ── */
+        .alert { padding: .9rem 1.1rem; border-radius: .75rem; font-size: .875rem; margin-bottom: 1rem; }
+        .alert-err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+        .alert-info { background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); color: #a5b4fc; }
+
+        /* ── Result ── */
+        #result-panel { display: none; margin-top: 1.5rem; }
+        .result-ok {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 1.2rem 1.4rem; border-radius: 1rem;
+            background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3);
+            margin-bottom: .9rem;
+        }
+        .result-ok h3 { font-size: .95rem; color: var(--success); margin-bottom: .2rem; }
+        .result-ok p { font-size: .82rem; color: var(--muted); }
+        #preview {
+            margin-top: 1rem; padding: 1rem; background: var(--card2);
+            border-radius: .75rem; border: 1px solid var(--border);
+            max-height: 260px; overflow-y: auto;
+            font-family: 'Courier New', monospace; font-size: .8rem;
+            white-space: pre-wrap; word-break: break-all; color: var(--muted);
+            display: none;
+        }
+
+        /* ── Feature Cards ── */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-top: 3.5rem; }
+        .feat {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.4rem;
+            transition: all .2s;
+        }
+        .feat:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .feat .fi { font-size: 1.8rem; margin-bottom: .6rem; }
+        .feat h3 { font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+        .feat p { font-size: .78rem; color: var(--muted); line-height: 1.55; }
+
+        /* ── Support Table ── */
+        .support-section { margin-top: 4rem; }
+        .support-section h2 { text-align: center; font-size: 1.6rem; font-weight: 800; margin-bottom: 2rem; }
+        .support-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: .9rem; }
+        .sup-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.1rem;
+            transition: all .2s;
+        }
+        .sup-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.3); }
+        .sup-card .si { font-size: 1.8rem; margin-bottom: .55rem; }
+        .sup-card h3 { font-size: .88rem; font-weight: 700; margin-bottom: .35rem; }
+        .sup-card p { font-size: .72rem; color: var(--muted); line-height: 1.55; }
+
+        footer {
+            text-align: center; margin-top: 4rem; padding-top: 2rem;
+            border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem;
+        }
+
+        input[type="file"] { display: none; }
+
+        @media (max-width: 600px) {
+            main { padding: 2rem 1rem; }
+            .drop-zone { padding: 2.5rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">
+        <div class="logo-box">📄</div>
+        DocConvert
+    </div>
+    <div style="display:flex;align-items:center;gap:.9rem">
+        <span class="badge-free">✓ ฟรี 100%</span>
+        <span style="color:var(--muted);font-size:.8rem">🔒 ไม่มีการอัปโหลด</span>
+    </div>
+</header>
+
+<main>
+    <!-- Hero -->
+    <div class="hero">
+        <h1>แปลงเอกสารทุกรูปแบบ<br><span>ฟรี ไม่มีขีดจำกัด</span></h1>
+        <p>รองรับ PDF · Word · Excel · CSV · JSON · XML · YAML · Markdown · HTML · รูปภาพ<br>ทุกอย่างประมวลผลในเบราว์เซอร์ — ข้อมูลไม่ออกจากเครื่องคุณ</p>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <span class="drop-icon">📂</span>
+        <h2>วางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์</h2>
+        <p>ลากไฟล์มาวางได้เลย — รองรับหลายรูปแบบ ไม่จำกัดขนาด</p>
+        <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+            🗂️ เลือกไฟล์
+        </button>
+        <div class="tag-row">
+            <span class="tag">📕 PDF</span>
+            <span class="tag">📘 Word .docx</span>
+            <span class="tag">📗 Excel .xlsx</span>
+            <span class="tag">📊 CSV</span>
+            <span class="tag">📋 JSON</span>
+            <span class="tag">📄 XML</span>
+            <span class="tag">📝 YAML</span>
+            <span class="tag">✍️ Markdown</span>
+            <span class="tag">🌐 HTML</span>
+            <span class="tag">🔤 TXT</span>
+            <span class="tag">🖼️ JPG / PNG / GIF / WebP</span>
+        </div>
+    </div>
+    <input type="file" id="fileInput" accept="*/*" onchange="handleFile(this.files[0])">
+
+    <!-- Conversion Panel -->
+    <div id="conv-panel">
+        <div class="panel">
+            <div class="panel-head">
+                <div class="file-info">
+                    <div class="file-icon" id="fIcon">📄</div>
+                    <div>
+                        <div class="file-name" id="fName">—</div>
+                        <div class="file-meta" id="fMeta">—</div>
+                    </div>
+                </div>
+                <button class="btn btn-ghost" onclick="reset()">✕ เปลี่ยนไฟล์</button>
+            </div>
+
+            <div id="errMsg" class="alert alert-err" style="display:none"></div>
+
+            <div class="section-label">🎯 แปลงเป็นรูปแบบ</div>
+            <div class="fmt-grid" id="fmtGrid"></div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" id="cvtBtn" onclick="doConvert()">⚡ แปลงไฟล์</button>
+                <span class="sel-text" id="selText">กรุณาเลือกรูปแบบที่ต้องการ</span>
+            </div>
+
+            <div id="progSec" style="display:none;margin-top:1rem">
+                <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+                <div class="progress-text" id="progText">กำลังแปลง...</div>
+            </div>
+        </div>
+
+        <!-- Result -->
+        <div id="result-panel">
+            <div class="result-ok">
+                <span style="font-size:2rem">✅</span>
+                <div>
+                    <h3>แปลงสำเร็จ!</h3>
+                    <p id="resDesc">—</p>
+                </div>
+            </div>
+            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+                <button class="btn btn-dl" id="dlBtn">⬇️ ดาวน์โหลด</button>
+                <button class="btn btn-ghost" onclick="convertAnother()">🔄 แปลงอีกไฟล์</button>
+            </div>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <!-- Feature Highlights -->
+    <div class="features">
+        <div class="feat"><div class="fi">🔒</div><h3>ปลอดภัย 100%</h3><p>ไฟล์ประมวลผลในเบราว์เซอร์เท่านั้น ไม่มีการส่งออกไปเซิร์ฟเวอร์ใด</p></div>
+        <div class="feat"><div class="fi">⚡</div><h3>รวดเร็วทันที</h3><p>ไม่ต้องรอการอัปโหลด แปลงเสร็จใน 1–5 วินาที</p></div>
+        <div class="feat"><div class="fi">🆓</div><h3>ฟรีทั้งหมด</h3><p>ไม่ต้องสมัครสมาชิก ไม่มีโฆษณา ไม่มีขีดจำกัดจำนวนครั้ง</p></div>
+        <div class="feat"><div class="fi">🌐</div><h3>ต้องการอินเทอร์เน็ต</h3><p>โหลด library จาก CDN ครั้งแรก (PDF, Word, Excel, YAML) หลังจากนั้นทำงานในเบราว์เซอร์ทั้งหมด</p></div>
+    </div>
+
+    <!-- Supported Formats -->
+    <div class="support-section">
+        <h2>📚 รูปแบบที่รองรับ</h2>
+        <div class="support-grid">
+            <div class="sup-card"><div class="si">📕</div><h3>PDF</h3><p>นำเข้า: รูปภาพ, TXT, Markdown<br>ส่งออก: TXT (ดึงข้อความ)</p></div>
+            <div class="sup-card"><div class="si">📘</div><h3>Word (.docx)</h3><p>ส่งออก: HTML, TXT</p></div>
+            <div class="sup-card"><div class="si">📗</div><h3>Excel (.xlsx / .xls)</h3><p>ส่งออก: CSV, JSON, HTML, TXT</p></div>
+            <div class="sup-card"><div class="si">📊</div><h3>CSV</h3><p>ส่งออก: Excel, JSON, HTML, TXT</p></div>
+            <div class="sup-card"><div class="si">📋</div><h3>JSON</h3><p>ส่งออก: CSV, Excel, YAML, TXT</p></div>
+            <div class="sup-card"><div class="si">📄</div><h3>XML</h3><p>ส่งออก: JSON, TXT</p></div>
+            <div class="sup-card"><div class="si">📝</div><h3>YAML</h3><p>ส่งออก: JSON, TXT</p></div>
+            <div class="sup-card"><div class="si">✍️</div><h3>Markdown (.md)</h3><p>ส่งออก: HTML, TXT, PDF</p></div>
+            <div class="sup-card"><div class="si">🌐</div><h3>HTML</h3><p>ส่งออก: TXT, Markdown</p></div>
+            <div class="sup-card"><div class="si">🔤</div><h3>Text (.txt)</h3><p>ส่งออก: HTML, PDF, Markdown</p></div>
+            <div class="sup-card"><div class="si">🖼️</div><h3>JPG / PNG / GIF / WebP</h3><p>ส่งออก: PDF, แปลงระหว่างรูปแบบ<br><small style="color:#f59e0b">⚠️ GIF: แปลงเฉพาะ frame แรก</small></p></div>
+        </div>
+    </div>
+
+    <footer>
+        🛠️ DocConvert v2.1 — ฟรีและโอเพนซอร์ส — ประมวลผลในเบราว์เซอร์ ปลอดภัย 100%
+    </footer>
+</main>
+
+<!-- ───────────────────────── Scripts ───────────────────────── -->
+<script>
+// ── State ──
+let curFile = null, selFmt = null;
+
+// ── Format definitions ──
+const FT = {
+    pdf:  { name:'PDF',           icon:'📕', color:'#ef4444' },
+    docx: { name:'Word',          icon:'📘', color:'#2563eb' },
+    doc:  { name:'Word',          icon:'📘', color:'#2563eb' },
+    xlsx: { name:'Excel',         icon:'📗', color:'#16a34a' },
+    xls:  { name:'Excel',         icon:'📗', color:'#16a34a' },
+    csv:  { name:'CSV',           icon:'📊', color:'#059669' },
+    json: { name:'JSON',          icon:'📋', color:'#d97706' },
+    xml:  { name:'XML',           icon:'📄', color:'#7c3aed' },
+    yaml: { name:'YAML',          icon:'📝', color:'#0891b2' },
+    yml:  { name:'YAML',          icon:'📝', color:'#0891b2' },
+    txt:  { name:'Text',          icon:'🔤', color:'#6b7280' },
+    md:   { name:'Markdown',      icon:'✍️',  color:'#4b5563' },
+    html: { name:'HTML',          icon:'🌐', color:'#f59e0b' },
+    htm:  { name:'HTML',          icon:'🌐', color:'#f59e0b' },
+    jpg:  { name:'JPEG',          icon:'🖼️', color:'#ec4899' },
+    jpeg: { name:'JPEG',          icon:'🖼️', color:'#ec4899' },
+    png:  { name:'PNG',           icon:'🖼️', color:'#ec4899' },
+    gif:  { name:'GIF',           icon:'🎞️', color:'#ec4899' },
+    webp: { name:'WebP',          icon:'🖼️', color:'#ec4899' },
+    bmp:  { name:'BMP',           icon:'🖼️', color:'#ec4899' },
+};
+
+const CONV = {
+    pdf:  ['txt'],
+    docx: ['html','txt'],
+    doc:  ['html','txt'],
+    xlsx: ['csv','json','html','txt'],
+    xls:  ['csv','json','html','txt'],
+    csv:  ['xlsx','json','html','txt'],
+    json: ['csv','xlsx','yaml','txt'],
+    xml:  ['json','txt'],
+    yaml: ['json','txt'],
+    yml:  ['json','txt'],
+    txt:  ['html','pdf','md'],
+    md:   ['html','txt','pdf'],
+    html: ['txt','md'],
+    htm:  ['txt','md'],
+    jpg:  ['pdf','png'],
+    jpeg: ['pdf','png'],
+    png:  ['pdf','jpg'],
+    gif:  ['pdf'],
+    webp: ['pdf','png','jpg'],
+    bmp:  ['pdf','png','jpg'],
+};
+
+const OF = {
+    pdf:  { icon:'📕', name:'PDF',    desc:'Portable Document' },
+    xlsx: { icon:'📗', name:'Excel',  desc:'Spreadsheet' },
+    csv:  { icon:'📊', name:'CSV',    desc:'Comma Separated' },
+    json: { icon:'📋', name:'JSON',   desc:'Data Format' },
+    html: { icon:'🌐', name:'HTML',   desc:'Web Page' },
+    txt:  { icon:'🔤', name:'TXT',    desc:'Plain Text' },
+    md:   { icon:'✍️',  name:'Markdown',desc:'Formatted Text'},
+    yaml: { icon:'📝', name:'YAML',   desc:'Config Format' },
+    png:  { icon:'🖼️', name:'PNG',    desc:'Lossless Image' },
+    jpg:  { icon:'🖼️', name:'JPEG',   desc:'Photo' },
+};
+
+// ── Drag & Drop ──
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+    if (!file) return;
+    curFile = file; selFmt = null;
+    const ext = getExt(file.name);
+    const ft  = FT[ext] || { name: ext.toUpperCase(), icon: '📄', color: '#6366f1' };
+    const outs = CONV[ext] || [];
+
+    // File info
+    const fi = document.getElementById('fIcon');
+    fi.textContent = ft.icon;
+    fi.style.background = `linear-gradient(135deg,${ft.color},${ft.color}99)`;
+    document.getElementById('fName').textContent = file.name;
+    document.getElementById('fMeta').textContent = `${fmtSize(file.size)} • ${ft.name}`;
+
+    // Error
+    const em = document.getElementById('errMsg');
+    if (outs.length === 0) {
+        em.style.display = 'block';
+        em.textContent = `⚠️ ยังไม่รองรับรูปแบบ .${ext} กรุณาลองรูปแบบอื่น`;
+    } else { em.style.display = 'none'; }
+
+    // Output formats
+    const grid = document.getElementById('fmtGrid');
+    grid.innerHTML = '';
+    outs.forEach(f => {
+        const info = OF[f] || { icon:'📄', name: f.toUpperCase(), desc:'' };
+        const d = document.createElement('div');
+        d.className = 'fmt-opt';
+        d.innerHTML = `<span class="fi">${info.icon}</span><div class="fn">.${f}</div><div class="fd">${info.desc}</div>`;
+        d.onclick = () => pickFmt(f, d);
+        grid.appendChild(d);
+    });
+
+    document.getElementById('conv-panel').style.display = 'block';
+    document.getElementById('result-panel').style.display = 'none';
+    document.getElementById('progSec').style.display = 'none';
+    document.getElementById('cvtBtn').disabled = false;
+    document.getElementById('selText').textContent = 'กรุณาเลือกรูปแบบที่ต้องการ';
+}
+
+function pickFmt(f, el) {
+    document.querySelectorAll('.fmt-opt').forEach(o => o.classList.remove('sel'));
+    el.classList.add('sel');
+    selFmt = f;
+    document.getElementById('selText').textContent = `แปลงเป็น  .${f}`;
+}
+
+// ── Convert ──
+async function doConvert() {
+    if (!curFile) return;
+    if (!selFmt) { alert('กรุณาเลือกรูปแบบที่ต้องการก่อน'); return; }
+    const ext = getExt(curFile.name);
+    prog(0, 'เริ่มต้น...');
+    document.getElementById('errMsg').style.display = 'none';
+
+    try {
+        const r = await convert(ext, selFmt, curFile);
+        showResult(r);
+    } catch(e) {
+        hideProg();
+        const em = document.getElementById('errMsg');
+        em.style.display = 'block';
+        em.textContent = `❌ ${e.message}`;
+        console.error(e);
+    }
+}
+
+async function convert(inp, out, file) {
+    // ── PDF → TXT ──
+    if (inp==='pdf' && out==='txt') {
+        prog(15,'โหลด PDF.js...');
+        await loadLib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const ab = await toAB(file);
+        const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+        let txt = '';
+        for (let i=1;i<=pdf.numPages;i++) {
+            prog(15 + (i/pdf.numPages)*75, `หน้า ${i}/${pdf.numPages}...`);
+            const page = await pdf.getPage(i);
+            const c = await page.getTextContent();
+            txt += `\n── หน้า ${i} ──\n` + c.items.map(x=>x.str).join(' ') + '\n';
+        }
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(txt,'text/plain'), filename:swapExt(file.name,'txt'), preview:txt.slice(0,800) };
+    }
+
+    // ── DOCX → HTML ──
+    if ((inp==='docx'||inp==='doc') && out==='html') {
+        prog(20,'โหลด mammoth.js...'); await loadLib('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+        prog(50,'แปลง Word → HTML...');
+        const ab = await toAB(file);
+        const r = await mammoth.convertToHtml({arrayBuffer:ab});
+        const h = wrap(r.value, file.name);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(h,'text/html'), filename:swapExt(file.name,'html'), preview:r.value.slice(0,600) };
+    }
+
+    // ── DOCX → TXT ──
+    if ((inp==='docx'||inp==='doc') && out==='txt') {
+        prog(20,'โหลด mammoth.js...'); await loadLib('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+        prog(60,'แปลง Word → Text...');
+        const r = await mammoth.extractRawText({arrayBuffer: await toAB(file)});
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(r.value,'text/plain'), filename:swapExt(file.name,'txt'), preview:r.value.slice(0,800) };
+    }
+
+    // ── XLSX / XLS → CSV ──
+    if ((inp==='xlsx'||inp==='xls') && out==='csv') {
+        prog(30,'อ่าน Excel...'); await loadXLSX();
+        const wb = XLSX.read(await toAB(file),{type:'array'});
+        prog(70,'แปลง → CSV...');
+        const csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(csv,'text/csv'), filename:swapExt(file.name,'csv'), preview:csv.slice(0,600) };
+    }
+
+    // ── XLSX / XLS → JSON ──
+    if ((inp==='xlsx'||inp==='xls') && out==='json') {
+        prog(30,'อ่าน Excel...'); await loadXLSX();
+        const wb = XLSX.read(await toAB(file),{type:'array'});
+        prog(70,'แปลง → JSON...');
+        const j = JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]),null,2);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(j,'application/json'), filename:swapExt(file.name,'json'), preview:j.slice(0,600) };
+    }
+
+    // ── XLSX / XLS → HTML ──
+    if ((inp==='xlsx'||inp==='xls') && out==='html') {
+        prog(30,'อ่าน Excel...'); await loadXLSX();
+        const wb = XLSX.read(await toAB(file),{type:'array'});
+        prog(70,'แปลง → HTML...');
+        const tbl = XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[0]]);
+        const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${file.name}</title><style>body{font-family:sans-serif;padding:1rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}th{background:#f0f0f0}</style></head><body>${tbl}</body></html>`;
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(h,'text/html'), filename:swapExt(file.name,'html'), preview:tbl.slice(0,400) };
+    }
+
+    // ── XLSX / XLS → TXT ──
+    if ((inp==='xlsx'||inp==='xls') && out==='txt') {
+        prog(30,'อ่าน Excel...'); await loadXLSX();
+        const wb = XLSX.read(await toAB(file),{type:'array'});
+        prog(70,'แปลง → TXT...');
+        const t = XLSX.utils.sheet_to_txt(wb.Sheets[wb.SheetNames[0]]);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(t,'text/plain'), filename:swapExt(file.name,'txt'), preview:t.slice(0,600) };
+    }
+
+    // ── CSV → XLSX ──
+    if (inp==='csv' && out==='xlsx') {
+        prog(30,'อ่าน CSV...'); await loadXLSX();
+        const txt = await toTXT(file);
+        prog(60,'แปลง → Excel...');
+        const wb = XLSX.read(txt,{type:'string'});
+        const buf = XLSX.write(wb,{type:'array',bookType:'xlsx'});
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(buf,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'), filename:swapExt(file.name,'xlsx') };
+    }
+
+    // ── CSV → JSON ──
+    if (inp==='csv' && out==='json') {
+        prog(30,'อ่าน CSV...'); await loadXLSX();
+        const txt = await toTXT(file);
+        prog(60,'แปลง → JSON...');
+        const wb = XLSX.read(txt,{type:'string'});
+        const j = JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]),null,2);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(j,'application/json'), filename:swapExt(file.name,'json'), preview:j.slice(0,600) };
+    }
+
+    // ── CSV → HTML ──
+    if (inp==='csv' && out==='html') {
+        prog(30,'อ่าน CSV...'); await loadXLSX();
+        const txt = await toTXT(file);
+        prog(60,'แปลง → HTML...');
+        const wb = XLSX.read(txt,{type:'string'});
+        const tbl = XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[0]]);
+        const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${file.name}</title><style>body{font-family:sans-serif;padding:1rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 10px}th{background:#f0f0f0}</style></head><body>${tbl}</body></html>`;
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(h,'text/html'), filename:swapExt(file.name,'html'), preview:tbl.slice(0,400) };
+    }
+
+    // ── CSV → TXT ──
+    if (inp==='csv' && out==='txt') {
+        prog(50,'อ่าน CSV...');
+        const t = await toTXT(file);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(t,'text/plain'), filename:swapExt(file.name,'txt'), preview:t.slice(0,600) };
+    }
+
+    // ── JSON → CSV ──
+    if (inp==='json' && out==='csv') {
+        prog(30,'อ่าน JSON...'); await loadXLSX();
+        const data = JSON.parse(await toTXT(file));
+        prog(60,'แปลง → CSV...');
+        const ws = XLSX.utils.json_to_sheet(Array.isArray(data)?data:[data]);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(csv,'text/csv'), filename:swapExt(file.name,'csv'), preview:csv.slice(0,600) };
+    }
+
+    // ── JSON → XLSX ──
+    if (inp==='json' && out==='xlsx') {
+        prog(30,'อ่าน JSON...'); await loadXLSX();
+        const data = JSON.parse(await toTXT(file));
+        prog(60,'แปลง → Excel...');
+        const arr = Array.isArray(data)?data:[data];
+        const ws = XLSX.utils.json_to_sheet(arr);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+        const buf = XLSX.write(wb,{type:'array',bookType:'xlsx'});
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(buf,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'), filename:swapExt(file.name,'xlsx') };
+    }
+
+    // ── JSON → YAML ──
+    if (inp==='json' && out==='yaml') {
+        prog(30,'โหลด js-yaml...'); await loadLib('https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js');
+        prog(60,'แปลง JSON → YAML...');
+        const data = JSON.parse(await toTXT(file));
+        const y = jsyaml.dump(data, {indent:2, lineWidth:-1});
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(y,'text/yaml'), filename:swapExt(file.name,'yaml'), preview:y.slice(0,600) };
+    }
+
+    // ── JSON → TXT ──
+    if (inp==='json' && out==='txt') {
+        prog(50,'แปลง...');
+        const t = JSON.stringify(JSON.parse(await toTXT(file)),null,2);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(t,'text/plain'), filename:swapExt(file.name,'txt'), preview:t.slice(0,600) };
+    }
+
+    // ── XML → JSON ──
+    if (inp==='xml' && out==='json') {
+        prog(50,'แปลง XML → JSON...');
+        const txt = await toTXT(file);
+        const dom = new DOMParser().parseFromString(txt,'text/xml');
+        const j = JSON.stringify(xml2json(dom),null,2);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(j,'application/json'), filename:swapExt(file.name,'json'), preview:j.slice(0,600) };
+    }
+
+    // ── XML → TXT ──
+    if (inp==='xml' && out==='txt') {
+        prog(50,'แปลง...');
+        const txt = await toTXT(file);
+        const t = new DOMParser().parseFromString(txt,'text/xml').documentElement.textContent;
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(t,'text/plain'), filename:swapExt(file.name,'txt'), preview:t.slice(0,600) };
+    }
+
+    // ── YAML / YML → JSON ──
+    if ((inp==='yaml'||inp==='yml') && out==='json') {
+        prog(30,'โหลด js-yaml...'); await loadLib('https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js');
+        prog(60,'แปลง YAML → JSON...');
+        const data = jsyaml.load(await toTXT(file));
+        const j = JSON.stringify(data,null,2);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(j,'application/json'), filename:swapExt(file.name,'json'), preview:j.slice(0,600) };
+    }
+
+    // ── YAML / YML → TXT ──
+    if ((inp==='yaml'||inp==='yml') && out==='txt') {
+        prog(50,'แปลง...');
+        const t = await toTXT(file);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(t,'text/plain'), filename:swapExt(file.name,'txt'), preview:t.slice(0,600) };
+    }
+
+    // ── TXT → HTML ──
+    if (inp==='txt' && out==='html') {
+        prog(50,'แปลง TXT → HTML...');
+        const t = await toTXT(file);
+        const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${file.name}</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.8;white-space:pre-wrap}</style></head><body>${esc(t)}</body></html>`;
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(h,'text/html'), filename:swapExt(file.name,'html'), preview:h.slice(0,400) };
+    }
+
+    // ── TXT → PDF ──
+    if (inp==='txt' && out==='pdf') {
+        prog(20,'โหลด pdf-lib...'); await loadLib('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');
+        prog(50,'แปลง TXT → PDF...');
+        const t = await toTXT(file);
+        const b = await txt2pdf(t);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(b,'application/pdf'), filename:swapExt(file.name,'pdf') };
+    }
+
+    // ── TXT → MD ──
+    if (inp==='txt' && out==='md') {
+        prog(50,'แปลง...');
+        const t = await toTXT(file);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(t,'text/markdown'), filename:swapExt(file.name,'md'), preview:t.slice(0,600) };
+    }
+
+    // ── MD → HTML ──
+    if (inp==='md' && out==='html') {
+        prog(20,'โหลด marked.js...'); await loadLib('https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js');
+        prog(60,'แปลง Markdown → HTML...');
+        const t = await toTXT(file);
+        const body = marked.parse(t);
+        const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${file.name}</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.8}pre{background:#f4f4f4;padding:1rem;border-radius:4px;overflow-x:auto}code{background:#f4f4f4;padding:.2em .4em;border-radius:3px;font-family:monospace}img{max-width:100%}</style></head><body>${body}</body></html>`;
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(h,'text/html'), filename:swapExt(file.name,'html'), preview:body.slice(0,600) };
+    }
+
+    // ── MD → TXT ──
+    if (inp==='md' && out==='txt') {
+        prog(50,'แปลง...');
+        const t = await toTXT(file);
+        const txt = t.replace(/#{1,6}\s/g,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1')
+                     .replace(/`(.+?)`/g,'$1').replace(/\[(.+?)\]\(.+?\)/g,'$1').replace(/^\s*[-*+]\s/gm,'• ');
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(txt,'text/plain'), filename:swapExt(file.name,'txt'), preview:txt.slice(0,600) };
+    }
+
+    // ── MD → PDF ──
+    if (inp==='md' && out==='pdf') {
+        prog(20,'โหลด pdf-lib...'); await loadLib('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');
+        prog(50,'แปลง Markdown → PDF...');
+        const t = await toTXT(file);
+        const b = await txt2pdf(t);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(b,'application/pdf'), filename:swapExt(file.name,'pdf') };
+    }
+
+    // ── HTML / HTM → TXT ──
+    if ((inp==='html'||inp==='htm') && out==='txt') {
+        prog(50,'แปลง HTML → TXT...');
+        const t = await toTXT(file);
+        // ใช้ DOMParser แทน innerHTML เพื่อป้องกัน XSS
+        const doc2 = new DOMParser().parseFromString(t, 'text/html');
+        const txt = doc2.body.innerText || doc2.body.textContent || '';
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(txt,'text/plain'), filename:swapExt(file.name,'txt'), preview:txt.slice(0,600) };
+    }
+
+    // ── HTML / HTM → MD ──
+    if ((inp==='html'||inp==='htm') && out==='md') {
+        prog(50,'แปลง HTML → Markdown...');
+        const t = await toTXT(file);
+        const md = html2md(t);
+        prog(100,'เสร็จสิ้น');
+        return { blob:blob(md,'text/markdown'), filename:swapExt(file.name,'md'), preview:md.slice(0,600) };
+    }
+
+    // ── Image → PDF ──
+    if (['jpg','jpeg','png','gif','webp','bmp'].includes(inp) && out==='pdf') {
+        // หมายเหตุ: GIF จะ capture เฉพาะ frame แรก (browser canvas ไม่รองรับ animation)
+        if (inp==='gif') prog(15,'⚠️ GIF: จะใช้แค่ frame แรก...');
+        prog(20,'โหลด pdf-lib...'); await loadLib('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');
+        prog(50,'แปลงรูปเป็น PDF...');
+        const ab = await toAB(file);
+        const b = await img2pdf(ab, inp);
+        prog(100,'เสร็จสิ้น');
+        const note = inp==='gif' ? ' (frame แรกเท่านั้น)' : '';
+        return { blob:blob(b,'application/pdf'), filename:swapExt(file.name,'pdf'), preview: inp==='gif' ? `⚠️ GIF animation: PDF จะแสดงเฉพาะ frame แรก${note}` : undefined };
+    }
+
+    // ── Image format → image format ──
+    if (['jpg','jpeg','png','gif','webp','bmp'].includes(inp) && ['png','jpg'].includes(out)) {
+        prog(50,'แปลงรูปภาพ...');
+        const b = await imgConvert(file, out);
+        prog(100,'เสร็จสิ้น');
+        return { blob:b, filename:swapExt(file.name, out) };
+    }
+
+    throw new Error(`ยังไม่รองรับการแปลง .${inp} → .${out}`);
+}
+
+// ── PDF-lib: image → PDF ──
+async function img2pdf(ab, ext) {
+    const { PDFDocument } = PDFLib;
+    const doc = await PDFDocument.create();
+    let img;
+    if (ext==='jpg'||ext==='jpeg') {
+        img = await doc.embedJpg(ab);
+    } else if (ext==='png') {
+        img = await doc.embedPng(ab);
+    } else {
+        // Convert via canvas first
+        const pngBuf = await imgToBuf(new Blob([ab],{type:`image/${ext}`}),'png');
+        img = await doc.embedPng(pngBuf);
+    }
+    const { width, height } = img;
+    const page = doc.addPage([width,height]);
+    page.drawImage(img,{x:0,y:0,width,height});
+    return doc.save();
+}
+
+// ── โหลด Sarabun Thai font (TTF) จาก GitHub ──
+let _thaiFontCache = null;
+async function loadThaiFont() {
+    if (_thaiFontCache) return _thaiFontCache;
+    // Sarabun Regular จาก Google Fonts repository (รองรับ CORS)
+    const url = 'https://raw.githubusercontent.com/google/fonts/main/ofl/sarabun/Sarabun-Regular.ttf';
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('Cannot load Sarabun font');
+    _thaiFontCache = await r.arrayBuffer();
+    return _thaiFontCache;
+}
+
+// ── pdf-lib: text → PDF (รองรับภาษาไทย) ──
+async function txt2pdf(text) {
+    const { PDFDocument, StandardFonts, rgb, PageSizes } = PDFLib;
+    const doc = await PDFDocument.create();
+
+    // ตรวจสอบว่ามีอักขระไทยหรือไม่
+    const hasThai = /[฀-๿]/.test(text);
+    let font, usingThai = false;
+    if (hasThai) {
+        try {
+            prog(35, 'กำลังโหลด Sarabun font สำหรับภาษาไทย...');
+            const fontBytes = await loadThaiFont();
+            font = await doc.embedFont(fontBytes);
+            usingThai = true;
+        } catch(e) {
+            console.warn('Sarabun font unavailable, falling back to Helvetica:', e);
+            font = await doc.embedFont(StandardFonts.Helvetica);
+        }
+    } else {
+        font = await doc.embedFont(StandardFonts.Helvetica);
+    }
+
+    const fs = 11, margin = 50, lh = fs * 1.55;
+    const [pw, ph] = PageSizes.A4;
+    const maxW = pw - margin*2;
+    const maxL = Math.floor((ph - margin*2) / lh);
+
+    const rawLines = text.split('\n');
+    const lines = [];
+    for (const raw of rawLines) {
+        // ภาษาไทยไม่ตัดด้วย space — ใส่ทั้งบรรทัดเลย (word-wrap ไม่รองรับไทย)
+        if (usingThai) { lines.push(raw); continue; }
+        const words = raw.split(' ');
+        let cur = '';
+        for (const w of words) {
+            const test = cur ? `${cur} ${w}` : w;
+            try {
+                if (font.widthOfTextAtSize(test,fs) > maxW && cur) { lines.push(cur); cur=w; }
+                else cur=test;
+            } catch { cur=test; } // ถ้า font ไม่รองรับ char ให้ข้ามไป
+        }
+        lines.push(cur);
+    }
+
+    let page = doc.addPage(PageSizes.A4);
+    let y = ph - margin, lc = 0;
+    for (const line of lines) {
+        if (lc >= maxL) { page = doc.addPage(PageSizes.A4); y = ph-margin; lc=0; }
+        try {
+            page.drawText(line||' ',{x:margin,y,size:fs,font,color:rgb(0,0,0)});
+        } catch { /* ข้าม character ที่ font ไม่รองรับ */ }
+        y -= lh; lc++;
+    }
+    return doc.save();
+}
+
+// ── Image format conversion ──
+function imgConvert(file, targetFmt) {
+    return new Promise((resolve,reject) => {
+        const img = new Image();
+        const objUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(objUrl); // fix memory leak
+            const c = document.createElement('canvas');
+            c.width=img.width; c.height=img.height;
+            const ctx=c.getContext('2d');
+            if (targetFmt==='jpg'||targetFmt==='jpeg') { ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); }
+            ctx.drawImage(img,0,0);
+            c.toBlob(b=>resolve(b), targetFmt==='png'?'image/png':'image/jpeg', .92);
+        };
+        img.onerror = (e) => { URL.revokeObjectURL(objUrl); reject(e); };
+        img.src = objUrl;
+    });
+}
+
+function imgToBuf(blobObj, fmt) {
+    return new Promise((resolve,reject) => {
+        const img = new Image();
+        const objUrl = URL.createObjectURL(blobObj);
+        img.onload = () => {
+            URL.revokeObjectURL(objUrl); // fix memory leak
+            const c=document.createElement('canvas');
+            c.width=img.width; c.height=img.height;
+            c.getContext('2d').drawImage(img,0,0);
+            c.toBlob(async b=>{ resolve(await b.arrayBuffer()); },`image/${fmt}`);
+        };
+        img.onerror = (e) => { URL.revokeObjectURL(objUrl); reject(e); };
+        img.src = objUrl;
+    });
+}
+
+// ── Helpers ──
+function html2md(html) {
+    return html
+        .replace(/<h1[^>]*>(.*?)<\/h1>/gi,'# $1\n\n')
+        .replace(/<h2[^>]*>(.*?)<\/h2>/gi,'## $1\n\n')
+        .replace(/<h3[^>]*>(.*?)<\/h3>/gi,'### $1\n\n')
+        .replace(/<strong[^>]*>(.*?)<\/strong>/gi,'**$1**')
+        .replace(/<b[^>]*>(.*?)<\/b>/gi,'**$1**')
+        .replace(/<em[^>]*>(.*?)<\/em>/gi,'*$1*')
+        .replace(/<i[^>]*>(.*?)<\/i>/gi,'*$1*')
+        .replace(/<code[^>]*>(.*?)<\/code>/gi,'`$1`')
+        .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi,'[$2]($1)')
+        .replace(/<br\s*\/?>/gi,'\n')
+        .replace(/<p[^>]*>(.*?)<\/p>/gis,'$1\n\n')
+        .replace(/<li[^>]*>(.*?)<\/li>/gis,'- $1\n')
+        .replace(/<[^>]+>/g,'')
+        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+        .replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function xml2json(xml) {
+    const obj={};
+    if (xml.nodeType===3) return xml.nodeValue.trim();
+    if (xml.attributes&&xml.attributes.length) {
+        obj['@']={};
+        for (let j=0;j<xml.attributes.length;j++) {
+            const a=xml.attributes.item(j);
+            obj['@'][a.nodeName]=a.nodeValue;
+        }
+    }
+    if (xml.hasChildNodes()) {
+        for (let i=0;i<xml.childNodes.length;i++) {
+            const item=xml.childNodes.item(i);
+            const nn=item.nodeName;
+            const nv=xml2json(item);
+            if (typeof nv==='string'&&!nv.trim()) continue;
+            if (obj[nn]===undefined) obj[nn]=nv;
+            else { if (!Array.isArray(obj[nn])) obj[nn]=[obj[nn]]; obj[nn].push(nv); }
+        }
+    }
+    return obj;
+}
+
+function wrap(body, title) {
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.7}</style></head><body>${body}</body></html>`;
+}
+
+function esc(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function getExt(name) { return (name.split('.').pop()||'').toLowerCase(); }
+function swapExt(name,ext) { return name.replace(/\.[^.]+$/,'.')+ext; }
+function fmtSize(b) { return b<1024?`${b} B`:b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(1)} MB`; }
+function blob(data, mime) { return new Blob([data],{type:mime}); }
+function toAB(file) { return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsArrayBuffer(file); }); }
+function toTXT(file) { return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsText(file,'UTF-8'); }); }
+function loadLib(src) {
+    return new Promise((res,rej)=>{
+        if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+        const s=document.createElement('script');
+        s.src=src; s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+    });
+}
+async function loadXLSX() {
+    await loadLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+}
+
+// ── UI helpers ──
+function prog(pct, text) {
+    document.getElementById('progSec').style.display='block';
+    document.getElementById('progFill').style.width=`${pct}%`;
+    document.getElementById('progText').textContent=text;
+    document.getElementById('result-panel').style.display='none';
+    document.getElementById('cvtBtn').disabled=true;
+}
+function hideProg() {
+    document.getElementById('progSec').style.display='none';
+    document.getElementById('cvtBtn').disabled=false;
+}
+function showResult(r) {
+    hideProg();
+    const rp=document.getElementById('result-panel');
+    rp.style.display='block';
+    document.getElementById('resDesc').textContent=`${r.filename} • ${fmtSize(r.blob.size)}`;
+    document.getElementById('dlBtn').onclick=()=>dlBlob(r.blob,r.filename);
+    const pv=document.getElementById('preview');
+    if (r.preview) { pv.style.display='block'; pv.textContent=r.preview+(r.preview.length>=600?'\n...(ตัดตัวอย่าง)':''); }
+    else { pv.style.display='none'; }
+}
+function dlBlob(b,fn) {
+    const url=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=url; a.download=fn;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function reset() {
+    curFile=null; selFmt=null;
+    document.getElementById('conv-panel').style.display='none';
+    document.getElementById('result-panel').style.display='none';
+    document.getElementById('fileInput').value='';
+}
+function convertAnother() {
+    document.getElementById('result-panel').style.display='none';
+    document.getElementById('progSec').style.display='none';
+    document.getElementById('cvtBtn').disabled=false;
+    document.querySelectorAll('.fmt-opt').forEach(o=>o.classList.remove('sel'));
+    selFmt=null;
+}
+</script>
+</body>
+</html>
