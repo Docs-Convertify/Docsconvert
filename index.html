@@ -344,8 +344,8 @@
     <div class="support-section">
         <h2>📚 รูปแบบที่รองรับ</h2>
         <div class="support-grid">
-            <div class="sup-card"><div class="si">📕</div><h3>PDF</h3><p>นำเข้า: รูปภาพ, TXT, Markdown<br>ส่งออก: TXT (ดึงข้อความ)</p></div>
-            <div class="sup-card"><div class="si">📘</div><h3>Word (.docx)</h3><p>ส่งออก: HTML, TXT</p></div>
+            <div class="sup-card"><div class="si">📕</div><h3>PDF</h3><p>นำเข้า: รูปภาพ, TXT, Markdown<br>ส่งออก: <strong>Word (.docx)</strong>, TXT</p></div>
+            <div class="sup-card"><div class="si">📘</div><h3>Word (.docx)</h3><p>ส่งออก: <strong>PDF</strong>, HTML, TXT</p></div>
             <div class="sup-card"><div class="si">📗</div><h3>Excel (.xlsx / .xls)</h3><p>ส่งออก: CSV, JSON, HTML, TXT</p></div>
             <div class="sup-card"><div class="si">📊</div><h3>CSV</h3><p>ส่งออก: Excel, JSON, HTML, TXT</p></div>
             <div class="sup-card"><div class="si">📋</div><h3>JSON</h3><p>ส่งออก: CSV, Excel, YAML, TXT</p></div>
@@ -359,7 +359,7 @@
     </div>
 
     <footer>
-        🛠️ DocConvert v2.1 — ฟรีและโอเพนซอร์ส — ประมวลผลในเบราว์เซอร์ ปลอดภัย 100%
+        🛠️ DocConvert v2.2 — ฟรีและโอเพนซอร์ส — ประมวลผลในเบราว์เซอร์ ปลอดภัย 100%
     </footer>
 </main>
 
@@ -393,9 +393,9 @@ const FT = {
 };
 
 const CONV = {
-    pdf:  ['txt'],
-    docx: ['html','txt'],
-    doc:  ['html','txt'],
+    pdf:  ['docx','txt'],
+    docx: ['pdf','html','txt'],
+    doc:  ['pdf','html','txt'],
     xlsx: ['csv','json','html','txt'],
     xls:  ['csv','json','html','txt'],
     csv:  ['xlsx','json','html','txt'],
@@ -417,6 +417,7 @@ const CONV = {
 
 const OF = {
     pdf:  { icon:'📕', name:'PDF',    desc:'Portable Document' },
+    docx: { icon:'📘', name:'Word',   desc:'Microsoft Word' },
     xlsx: { icon:'📗', name:'Excel',  desc:'Spreadsheet' },
     csv:  { icon:'📊', name:'CSV',    desc:'Comma Separated' },
     json: { icon:'📋', name:'JSON',   desc:'Data Format' },
@@ -522,6 +523,99 @@ async function convert(inp, out, file) {
         }
         prog(100,'เสร็จสิ้น');
         return { blob:blob(txt,'text/plain'), filename:swapExt(file.name,'txt'), preview:txt.slice(0,800) };
+    }
+
+    // ── PDF → DOCX ──
+    if (inp==='pdf' && out==='docx') {
+        prog(10,'โหลด PDF.js...');
+        await loadLib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        prog(25,'โหลด docx library...');
+        await loadLib('https://unpkg.com/docx@7.8.2/build/index.js');
+        const ab = await toAB(file);
+        const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+        const paragraphs = [];
+        for (let i=1; i<=pdf.numPages; i++) {
+            prog(25 + (i/pdf.numPages)*55, `อ่านหน้า ${i}/${pdf.numPages}...`);
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            // จัดกลุ่ม items เป็นบรรทัดตาม y-position
+            const lineMap = {};
+            for (const item of content.items) {
+                if (!item.str.trim()) continue;
+                const y = Math.round(item.transform[5]);
+                if (!lineMap[y]) lineMap[y] = [];
+                lineMap[y].push(item.str);
+            }
+            const sortedYs = Object.keys(lineMap).map(Number).sort((a,b)=>b-a);
+            if (i > 1) paragraphs.push(new docx.Paragraph({pageBreakBefore: true, children:[]}));
+            for (const y of sortedYs) {
+                const lineText = lineMap[y].join(' ').trim();
+                if (lineText) {
+                    paragraphs.push(new docx.Paragraph({
+                        children: [new docx.TextRun({text: lineText, size: 24})],
+                        spacing: {after: 100}
+                    }));
+                }
+            }
+        }
+        prog(85,'สร้างไฟล์ DOCX...');
+        const doc2 = new docx.Document({
+            sections: [{ properties:{}, children: paragraphs }]
+        });
+        const buf = await docx.Packer.toBuffer(doc2);
+        prog(100,'เสร็จสิ้น');
+        return {
+            blob: blob(buf,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            filename: swapExt(file.name,'docx'),
+            preview: `✅ แปลง PDF → Word สำเร็จ (${pdf.numPages} หน้า)\nหมายเหตุ: layout อาจแตกต่างจากต้นฉบับ`
+        };
+    }
+
+    // ── DOCX → PDF ──
+    if ((inp==='docx'||inp==='doc') && out==='pdf') {
+        prog(15,'โหลด mammoth.js...');
+        await loadLib('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+        prog(35,'แปลง Word → HTML...');
+        const ab = await toAB(file);
+        const result = await mammoth.convertToHtml({arrayBuffer: ab});
+        prog(50,'โหลด html2canvas + jsPDF...');
+        await Promise.all([
+            loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+            loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+        ]);
+        prog(65,'render เนื้อหา...');
+        // สร้าง container ซ่อนไว้ render
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;top:-99999px;left:-99999px;width:794px;background:#fff;padding:48px 56px;font-family:\"Sarabun\",\"Noto Sans Thai\",sans-serif;font-size:13px;line-height:1.8;color:#111;word-break:break-word';
+        container.innerHTML = result.value;
+        document.body.appendChild(container);
+        const canvas = await html2canvas(container, {scale:1.5, useCORS:true, logging:false});
+        document.body.removeChild(container);
+        prog(82,'สร้าง PDF...');
+        const { jsPDF } = window.jspdf;
+        const pdf2 = new jsPDF('p','mm','a4');
+        const pageW = pdf2.internal.pageSize.getWidth();
+        const pageH = pdf2.internal.pageSize.getHeight();
+        const imgW = pageW;
+        const imgH = (canvas.height * pageW) / canvas.width;
+        let posY = 0, remaining = imgH;
+        pdf2.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,posY,imgW,imgH);
+        remaining -= pageH;
+        while (remaining > 0) {
+            posY -= pageH;
+            pdf2.addPage();
+            pdf2.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,posY,imgW,imgH);
+            remaining -= pageH;
+        }
+        const pdfBytes = pdf2.output('arraybuffer');
+        prog(100,'เสร็จสิ้น');
+        return {
+            blob: blob(pdfBytes,'application/pdf'),
+            filename: swapExt(file.name,'pdf'),
+            preview: `✅ แปลง Word → PDF สำเร็จ`
+        };
     }
 
     // ── DOCX → HTML ──
