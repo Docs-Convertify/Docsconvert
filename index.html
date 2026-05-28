@@ -368,7 +368,7 @@
     </div>
 
     <footer>
-        🛠️ DocConvert v2.4 — ฟรีและโอเพนซอร์ส — รองรับ iOS / Android ✅
+        🛠️ DocConvert v2.5 — ฟรีและโอเพนซอร์ส — รองรับ iOS / Android ✅
     </footer>
 </main>
 
@@ -600,10 +600,11 @@ async function convert(inp, out, file) {
         const doc2 = new docx.Document({
             sections: [{ properties:{}, children: paragraphs }]
         });
-        const buf = await docx.Packer.toBuffer(doc2);
+        // ใช้ toBlob() แทน toBuffer() — รองรับ iOS/browser (ไม่ต้องการ Node.js Buffer)
+        const docBlob = await docx.Packer.toBlob(doc2);
         prog(100,'เสร็จสิ้น');
         return {
-            blob: blob(buf,'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            blob: docBlob,
             filename: swapExt(file.name,'docx'),
             preview: `✅ แปลง PDF → Word สำเร็จ (${pdf.numPages} หน้า)\nหมายเหตุ: layout อาจแตกต่างจากต้นฉบับ`
         };
