@@ -239,6 +239,11 @@
             main { padding: 2rem 1rem; }
             .drop-zone { padding: 2.5rem 1rem; }
         }
+        /* ── Mobile / Touch: ซ่อน drag instruction ── */
+        @media (hover: none) and (pointer: coarse) {
+            .drop-zone { border-style: solid; }
+            .drag-hint { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -264,8 +269,9 @@
     <!-- Drop Zone -->
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <span class="drop-icon">📂</span>
-        <h2>วางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์</h2>
-        <p>ลากไฟล์มาวางได้เลย — รองรับหลายรูปแบบ ไม่จำกัดขนาด</p>
+        <h2 id="dropTitle">วางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์</h2>
+        <p class="drag-hint">ลากไฟล์มาวางได้เลย — รองรับหลายรูปแบบ ไม่จำกัดขนาด</p>
+        <p id="tapHint" style="display:none;color:var(--muted)">แตะปุ่มด้านล่างเพื่อเลือกไฟล์จาก iPhone / iCloud</p>
         <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
             🗂️ เลือกไฟล์
         </button>
@@ -328,6 +334,9 @@
                 <button class="btn btn-dl" id="dlBtn">⬇️ ดาวน์โหลด</button>
                 <button class="btn btn-ghost" onclick="convertAnother()">🔄 แปลงอีกไฟล์</button>
             </div>
+            <div id="ios-save-hint" style="display:none;margin-top:.75rem;padding:.75rem 1rem;background:rgba(99,102,241,.12);border-radius:.75rem;font-size:.82rem;color:#a5b4fc">
+                📱 <strong>iPhone:</strong> กด "บันทึก / แชร์" → เลือก <strong>"บันทึกใน Files"</strong> หรือ <strong>"บันทึกใน Photos"</strong> (สำหรับรูป)
+            </div>
             <div id="preview"></div>
         </div>
     </div>
@@ -359,7 +368,7 @@
     </div>
 
     <footer>
-        🛠️ DocConvert v2.2 — ฟรีและโอเพนซอร์ส — ประมวลผลในเบราว์เซอร์ ปลอดภัย 100%
+        🛠️ DocConvert v2.3 — ฟรีและโอเพนซอร์ส — รองรับ iOS / Android ✅
     </footer>
 </main>
 
@@ -367,6 +376,10 @@
 <script>
 // ── State ──
 let curFile = null, selFmt = null;
+
+// ── iOS Detection ──
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isMobile = isIOS || /Android/.test(navigator.userAgent);
 
 // ── Format definitions ──
 const FT = {
@@ -428,6 +441,20 @@ const OF = {
     png:  { icon:'🖼️', name:'PNG',    desc:'Lossless Image' },
     jpg:  { icon:'🖼️', name:'JPEG',   desc:'Photo' },
 };
+
+// ── iOS / Mobile UI Adjustments ──
+if (isMobile) {
+    // เปลี่ยนข้อความให้เหมาะกับ touch
+    const title = document.getElementById('dropTitle');
+    const tapHint = document.getElementById('tapHint');
+    if (title) title.textContent = 'แตะเพื่อเลือกไฟล์';
+    if (tapHint) tapHint.style.display = 'block';
+    // เปลี่ยนปุ่มดาวน์โหลดเป็น Share บน iOS
+    if (isIOS) {
+        const dlBtn = document.getElementById('dlBtn');
+        if (dlBtn) dlBtn.textContent = '📤 บันทึก / แชร์';
+    }
+}
 
 // ── Drag & Drop ──
 const dz = document.getElementById('dropZone');
@@ -510,10 +537,15 @@ async function convert(inp, out, file) {
     if (inp==='pdf' && out==='txt') {
         prog(15,'โหลด PDF.js...');
         await loadLib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // iOS Safari มีปัญหา cross-origin worker — ปิด worker บน iOS
+        if (isIOS) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+        } else {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
         const ab = await toAB(file);
-        const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+        const pdf = await pdfjsLib.getDocument({data:ab, useWorkerFetch:false, isEvalSupported:false}).promise;
         let txt = '';
         for (let i=1;i<=pdf.numPages;i++) {
             prog(15 + (i/pdf.numPages)*75, `หน้า ${i}/${pdf.numPages}...`);
@@ -529,8 +561,12 @@ async function convert(inp, out, file) {
     if (inp==='pdf' && out==='docx') {
         prog(10,'โหลด PDF.js...');
         await loadLib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        if (isIOS) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+        } else {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
         prog(25,'โหลด docx library...');
         await loadLib('https://unpkg.com/docx@7.8.2/build/index.js');
         const ab = await toAB(file);
@@ -1106,18 +1142,44 @@ function hideProg() {
 }
 function showResult(r) {
     hideProg();
-    const rp=document.getElementById('result-panel');
-    rp.style.display='block';
-    document.getElementById('resDesc').textContent=`${r.filename} • ${fmtSize(r.blob.size)}`;
-    document.getElementById('dlBtn').onclick=()=>dlBlob(r.blob,r.filename);
-    const pv=document.getElementById('preview');
+    const rp = document.getElementById('result-panel');
+    rp.style.display = 'block';
+    document.getElementById('resDesc').textContent = `${r.filename} • ${fmtSize(r.blob.size)}`;
+    const dlBtn = document.getElementById('dlBtn');
+    dlBtn.textContent = isIOS ? '📤 บันทึก / แชร์' : '⬇️ ดาวน์โหลด';
+    dlBtn.onclick = () => dlBlob(r.blob, r.filename);
+    const pv = document.getElementById('preview');
     if (r.preview) { pv.style.display='block'; pv.textContent=r.preview+(r.preview.length>=600?'\n...(ตัดตัวอย่าง)':''); }
-    else { pv.style.display='none'; }
+    else { pv.style.display = 'none'; }
+    // iOS hint
+    const iosHint = document.getElementById('ios-save-hint');
+    if (iosHint) iosHint.style.display = isIOS ? 'block' : 'none';
 }
-function dlBlob(b,fn) {
-    const url=URL.createObjectURL(b);
-    const a=document.createElement('a');
-    a.href=url; a.download=fn;
+async function dlBlob(b, fn) {
+    // ── iOS: ใช้ Web Share API (บันทึกลง Files app ได้เลย) ──
+    if (isIOS) {
+        if (navigator.share && navigator.canShare) {
+            try {
+                const shareFile = new File([b], fn, {type: b.type});
+                if (navigator.canShare({files: [shareFile]})) {
+                    await navigator.share({files: [shareFile], title: fn});
+                    return;
+                }
+            } catch(e) {
+                if (e.name === 'AbortError') return; // user กด cancel
+                // fall through to open-in-tab
+            }
+        }
+        // iOS fallback: เปิดใน tab ใหม่ (ใช้ได้กับ PDF, TXT, HTML)
+        const url = URL.createObjectURL(b);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        return;
+    }
+    // ── Desktop / Android ──
+    const url = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href = url; a.download = fn;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
 }
